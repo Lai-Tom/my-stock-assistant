@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Copy, TrendingUp, Globe, Terminal, RefreshCw } from 'lucide-react';
+import { Plus, X, Copy, TrendingUp, Cpu, Globe, Rocket, Terminal, FileText, RefreshCw } from 'lucide-react';
 
 const App = () => {
   const [targetDate, setTargetDate] = useState('');
@@ -14,10 +14,9 @@ const App = () => {
     setTargetDate(today.toISOString().split('T')[0]);
 
     // 嘗試讀取 Python 產生的 stocks.json
-    // 注意：這個檔案是由 GitHub Action 執行 fetch_data.py 後自動產生的
     fetch('./stocks.json')
       .then(res => {
-        if (!res.ok) throw new Error("找不到資料檔 (可能是剛建立尚未執行自動化更新)");
+        if (!res.ok) throw new Error("找不到資料檔");
         return res.json();
       })
       .then(data => {
@@ -26,12 +25,13 @@ const App = () => {
         showNotification('已載入最新真實股價資料');
       })
       .catch(err => {
-        console.log('讀取失敗:', err);
+        console.log('讀取失敗 (可能是本地開發或尚未執行 Action):', err);
         setLoading(false);
+        // 如果讀不到檔案，保持空陣列或載入預設
       });
   }, []);
 
-  // 新增股票 (僅前端暫存)
+  // 新增股票 (因為是靜態網站，這裡新增的只會暫時存在瀏覽器，重整後會變回 JSON 的內容)
   const handleAddStock = () => {
     if (!inputValue) return;
     const code = inputValue.toUpperCase().trim();
@@ -41,17 +41,18 @@ const App = () => {
       return;
     }
 
+    // 這裡僅作簡單模擬，因為瀏覽器無法直接跑 Python yfinance
     const newStock = {
       id: Date.now(),
       code: code,
       name: code,
       industry: '新增觀察(無歷史數據)',
-      history: [] 
+      history: [] // 新增的暫時沒有數據
     };
     
     setTargetStock(prev => [...prev, newStock]);
     setInputValue('');
-    showNotification('提醒：在此新增僅為暫存，請修改 GitHub 的 fetch_data.py 以獲取真實數據');
+    showNotification('注意：手動新增的股票僅暫存，請修改 fetch_data.py 以獲取真實數據');
   };
 
   const handleRemoveStock = (code) => {
@@ -136,7 +137,7 @@ ${allStocksData}`;
          
           {targetStock.length === 0 && !loading ? (
              <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300 text-slate-400">
-               暫無資料，請等待 GitHub Action 執行完畢 (約需 1-2 分鐘)
+               暫無資料，請等待 GitHub Action 執行完畢
              </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -152,12 +153,12 @@ ${allStocksData}`;
                         <div className="flex flex-col">
                           <span className="font-bold text-slate-800">{stock.code}</span>
                           <span className="text-[10px] text-slate-500">
-                             {stock.history && stock.history.length > 0 
+                             {stock.history.length > 0 
                                ? `收盤: ${stock.history[0].close} | Vol: ${(stock.history[0].volume/1000).toFixed(0)}k` 
                                : '無數據'}
                           </span>
                         </div>
-                         {stock.history && stock.history.length > 0 && (
+                         {stock.history.length > 0 && (
                            <div className="flex flex-col items-end text-[10px] font-mono text-slate-600">
                              <span>K:{stock.history[0].k}</span>
                              <span>D:{stock.history[0].d}</span>
@@ -189,19 +190,17 @@ ${allStocksData}`;
           </div>
           <div className="h-24 overflow-hidden text-xs font-mono text-slate-400 whitespace-pre-wrap border border-white/10 p-2 rounded">
              {targetStock.length > 0 
-               ? `預覽: 請提供 ${targetStock.map(s=>s.code).join('、')} 的完整每日快訊...`
+               ? `預覽: 請提供 ${targetStock.map(s=>s.code).join('、')} 的完整每日快訊... (包含 ${targetStock.reduce((acc,s)=>acc + s.history.length, 0)} 筆數據)`
                : '等待數據中...'}
           </div>
         </section>
 
-        {/* Notification */}
-        {notification && (
-          <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-xl z-50 text-sm animate-bounce">
-            {notification}
-          </div>
-        )}
-
       </div>
+      {notification && (
+        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-xl z-50 text-sm">
+          {notification}
+        </div>
+      )}
     </div>
   );
 };
