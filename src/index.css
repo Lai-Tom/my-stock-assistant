@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 額外自訂樣式 */
+body {
+  margin: 0;
+  font-family: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+}
