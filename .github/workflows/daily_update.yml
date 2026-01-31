@@ -1,0 +1,54 @@
+name: Daily Stock Update & Deploy
+
+on:
+  # 1. 每天 UTC 00:00 (台灣時間 08:00) 自動執行
+  schedule:
+    - cron: '0 0 * * *'
+  # 2. 允許手動點擊按鈕觸發 (方便測試)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 檢出程式碼 (Checkout)
+        uses: actions/checkout@v3
+
+      # --- 階段一：Python 抓取資料 ---
+      - name: 設定 Python 環境
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: 安裝 Python 套件
+        run: |
+          pip install -r requirements.txt
+
+      - name: 執行爬蟲腳本 (Fetch Data)
+        run: |
+          python fetch_data.py
+        # 這一步會產生 public/stocks.json
+
+      # --- 階段二：建置 React 網站 ---
+      - name: 設定 Node.js 環境
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: 安裝前端依賴
+        run: npm install
+
+      - name: 建置網站 (Build)
+        run: npm run build
+        # 這一步會把 React 程式 + 剛剛產生的 stocks.json 打包到 dist 資料夾
+
+      # --- 階段三：部署到 GitHub Pages ---
+      - name: 部署到 gh-pages 分支
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
