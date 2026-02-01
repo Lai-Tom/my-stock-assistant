@@ -94,13 +94,23 @@ const App = () => {
     return '美股/國際股票';
   };
 
-  // 生成 Mock 數據 (同時模擬漲跌)
+  // 生成 Mock 數據 (模擬幣別)
   const generateMockData = (code) => {
     const dates = [];
     const history = [];
     const industry = determineIndustry(code);
     let priceBase = 100;
-    if(['2330','TSM'].includes(code)) priceBase=1000;
+    let currency = 'USD'; // 預設美金
+
+    // 簡單判斷幣別與股價
+    if (['2330', '2454', '2303', '3491'].includes(code) || /^\d{4}$/.test(code)) {
+        currency = 'TWD';
+        if(code === '2330') priceBase = 1000;
+        else priceBase = 100;
+    } else {
+        if(['NVDA'].includes(code)) priceBase = 130;
+        else if(['TSM'].includes(code)) priceBase = 180;
+    }
     
     const today = new Date();
     for(let i=0; i<30; i++){
@@ -117,7 +127,6 @@ const App = () => {
         });
     });
     
-    // 模擬今日漲跌
     const mockChange = (Math.random() * 10 - 5).toFixed(2);
     const mockPctChange = (mockChange / priceBase * 100).toFixed(2);
 
@@ -126,10 +135,11 @@ const App = () => {
         code, 
         name: code, 
         industry, 
+        currency, // Mock 幣別
         history, 
         isMock: true,
-        change: parseFloat(mockChange),      // 模擬漲跌
-        pctChange: parseFloat(mockPctChange) // 模擬漲幅
+        change: parseFloat(mockChange),      
+        pctChange: parseFloat(mockPctChange) 
     };
   };
 
@@ -244,13 +254,11 @@ ${allStocksData}`;
       navigator.clipboard.writeText(promptText).then(() => showNotification('指令已複製'));
   };
 
-  // 格式化數字顯示 (加號與顏色)
   const formatChange = (val) => {
     if (val > 0) return `+${val}`;
     return val;
   };
 
-  // 決定文字顏色 (台股習慣：漲紅、跌綠)
   const getChangeColor = (val) => {
     if (val > 0) return 'text-red-500';
     if (val < 0) return 'text-green-500';
@@ -325,7 +333,15 @@ ${allStocksData}`;
                         {!stock.error && (
                             <div className="text-sm">
                                 <div className="text-slate-500 mb-1">
-                                    收盤: <span className="font-mono text-slate-800 text-lg font-bold">{stock.history?.[0]?.close || '-'}</span>
+                                    收盤: 
+                                    {/* 收盤價跟隨漲跌變色 */}
+                                    <span className={`font-mono text-lg font-bold ml-1 ${getChangeColor(stock.change)}`}>
+                                        {stock.history?.[0]?.close || '-'}
+                                    </span>
+                                    {/* 顯示幣別 */}
+                                    <span className="text-xs ml-1 font-normal text-slate-400">
+                                        {stock.currency || (stock.isMock ? 'USD/TWD' : '')}
+                                    </span>
                                 </div>
                                 <div className="flex items-center gap-3 text-xs font-medium font-mono">
                                     <span className={getChangeColor(stock.change)}>
