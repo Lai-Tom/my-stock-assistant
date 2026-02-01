@@ -58,7 +58,6 @@ def fetch_all_stocks():
         try:
             # 1. 智慧判斷代碼
             search_ticker = code
-            # 如果是4位數字，預設先加 .TW (上市)
             if code.isdigit() and len(code) == 4:
                 search_ticker = f"{code}.TW"
             
@@ -68,7 +67,6 @@ def fetch_all_stocks():
             hist = stock.history(period="60d")
             
             # 2. 上櫃股票救援機制 (.TWO)
-            # 如果 .TW 抓不到，且原本是數字，嘗試 .TWO
             if hist.empty and search_ticker.endswith('.TW'):
                 print(f"  -> .TW 無資料，嘗試 .TWO (上櫃)...")
                 search_ticker = f"{code}.TWO"
@@ -84,20 +82,29 @@ def fetch_all_stocks():
             elif ".TW" in search_ticker or ".TWO" in search_ticker: industry = "台灣上市櫃股票"
             else: industry = "美股/國際"
 
-            # 3. 錯誤處理機制 (關鍵修改)
+            # 3. 錯誤處理
             if hist.empty:
                 print(f"  -> 警告: 找不到 {search_ticker} 的資料，標記為 Error")
-                # 即使抓不到，也要加入 results，但標記 error
                 results.append({
                     "id": clean_code,
                     "code": clean_code,
                     "name": code,
                     "industry": industry,
                     "history": [],
-                    "error": True, # 告訴前端這支股票抓失敗了
+                    "error": True,
                     "error_msg": "查無資料 (Yahoo Finance)"
                 })
                 continue
+
+            # --- 新增邏輯：計算漲跌與漲幅 ---
+            change = 0
+            pct_change = 0
+            if len(hist) >= 2:
+                today_close = hist['Close'].iloc[-1]
+                yesterday_close = hist['Close'].iloc[-2]
+                change = today_close - yesterday_close
+                pct_change = (change / yesterday_close) * 100
+            # -------------------------------
 
             hist = calculate_technical_indicators(hist)
             last_30 = hist.tail(30).reset_index()
@@ -119,13 +126,14 @@ def fetch_all_stocks():
                 "code": clean_code, 
                 "name": code,
                 "industry": industry,
+                "change": round(change, 2),        # 新增欄位
+                "pctChange": round(pct_change, 2), # 新增欄位
                 "history": history_data[::-1],
                 "error": False
             })
             
         except Exception as e:
             print(f"  -> 錯誤: 處理 {code} 時發生異常: {e}")
-            # 發生例外錯誤也要回報
             results.append({
                 "id": code,
                 "code": code,
