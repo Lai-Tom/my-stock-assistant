@@ -4,6 +4,8 @@
     "code": "2330",
     "name": "2330.TW",
     "industry": "半導體業",
+    "change": -30.0,
+    "pctChange": -1.66,
     "history": [
       {
         "date": "2026-01-30",
@@ -253,6 +255,8 @@
     "code": "FLY",
     "name": "FLY",
     "industry": "航太與國防",
+    "change": -1.89,
+    "pctChange": -6.98,
     "history": [
       {
         "date": "2026-01-30",
@@ -502,6 +506,8 @@
     "code": "USAR",
     "name": "USAR",
     "industry": "美股/國際",
+    "change": 0.35,
+    "pctChange": 1.59,
     "history": [
       {
         "date": "2026-01-30",
@@ -751,6 +757,8 @@
     "code": "TSM",
     "name": "TSM",
     "industry": "半導體業",
+    "change": -8.99,
+    "pctChange": -2.65,
     "history": [
       {
         "date": "2026-01-30",
@@ -1000,6 +1008,8 @@
     "code": "RKLB",
     "name": "RKLB",
     "industry": "美股/國際",
+    "change": -5.61,
+    "pctChange": -6.55,
     "history": [
       {
         "date": "2026-01-30",
