@@ -7,7 +7,7 @@ const App = () => {
   const [inputValue, setInputValue] = useState('');
   const [notification, setNotification] = useState('');
   const [loading, setLoading] = useState(true);
-  const [lastUpdatedTime, setLastUpdatedTime] = useState(''); // 新增：顯示最後檢查時間
+  const [lastUpdatedTime, setLastUpdatedTime] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const [ghConfig, setGhConfig] = useState({
@@ -16,8 +16,6 @@ const App = () => {
     repo: ''
   });
 
-  // --- 核心升級：自動定時檢查機制 ---
-  // 自定義 Hook: 類似 setInterval，但更適合 React
   function useInterval(callback, delay) {
     const savedCallback = useRef();
     useEffect(() => {
@@ -31,17 +29,13 @@ const App = () => {
     }, [delay]);
   }
 
-  // 設定每 30 秒 (30000ms) 自動檢查一次
   useInterval(() => {
-    // 只有當還有股票處於 "Syncing (Mock)" 狀態時，才需要頻繁檢查
-    // 或者您希望隨時保持最新，也可以無條件檢查
     const hasPendingStocks = targetStock.some(s => s.isMock && !s.error);
     if (hasPendingStocks) {
         console.log('正在背景檢查新數據...');
-        initData(true); // true 代表這是背景靜默更新，不要顯示 Loading
+        initData(true);
     }
   }, 30000);
-  // ------------------------------
 
   useEffect(() => {
     const today = new Date();
@@ -58,13 +52,10 @@ const App = () => {
     let combinedData = [];
 
     try {
-        // 加上時間戳記，確保讀到的一定是 GitHub 最新產生的檔案
         const res = await fetch(`./stocks.json?t=${Date.now()}`);
         if (res.ok) {
             serverData = await res.json();
             combinedData = [...serverData];
-            
-            // 更新最後檢查時間顯示
             const now = new Date();
             setLastUpdatedTime(now.toLocaleTimeString());
         }
@@ -72,30 +63,21 @@ const App = () => {
         console.log('讀取 stocks.json 失敗:', err);
     }
 
-    // 讀取本地暫存
     const localCodes = JSON.parse(localStorage.getItem('my_saved_stocks')) || [];
     const serverCodeSet = new Set(serverData.map(s => s.code));
 
-    // 檢查是否有「剛轉正」的股票 (原本是 Mock，現在 Server 有了)
     if (isBackground) {
         const justUpdated = localCodes.filter(code => {
-             // 如果 targetStock 裡是 Mock，但 serverCodeSet 裡有了，代表更新成功
              const currentIsMock = targetStock.find(s => s.code === code)?.isMock;
              return currentIsMock && serverCodeSet.has(code);
         });
-
         if (justUpdated.length > 0) {
             showNotification(`數據更新成功！${justUpdated.join(', ')} 已取得真實報價。`);
         }
     }
 
     localCodes.forEach(code => {
-        // 如果 Server 還沒資料 (還在跑 Action)，就維持 Mock 顯示
-        // 如果 Server 回傳 Error，就顯示 Error
         if (!serverCodeSet.has(code)) {
-            // 這裡有個優化：如果這個 code 在 serverData 裡被標記為 error，我們就不要塞 mock 了
-            // 但目前的邏輯 serverData 包含 error 項目，所以 serverCodeSet.has 會是 true
-            // 只有完全沒在名單裡的 (Action 還沒跑完) 才會進來這裡
             const mockStock = generateMockData(code);
             combinedData.push(mockStock);
         }
@@ -112,6 +94,7 @@ const App = () => {
     return '美股/國際股票';
   };
 
+  // 生成 Mock 數據 (同時模擬漲跌)
   const generateMockData = (code) => {
     const dates = [];
     const history = [];
@@ -133,7 +116,21 @@ const App = () => {
             k:(Math.random()*80+10).toFixed(1), d:(Math.random()*80+10).toFixed(1), macd:(Math.random()*4-2).toFixed(2)
         });
     });
-    return { id: `local-${code}-${Date.now()}`, code, name: code, industry, history, isMock: true };
+    
+    // 模擬今日漲跌
+    const mockChange = (Math.random() * 10 - 5).toFixed(2);
+    const mockPctChange = (mockChange / priceBase * 100).toFixed(2);
+
+    return { 
+        id: `local-${code}-${Date.now()}`, 
+        code, 
+        name: code, 
+        industry, 
+        history, 
+        isMock: true,
+        change: parseFloat(mockChange),      // 模擬漲跌
+        pctChange: parseFloat(mockPctChange) // 模擬漲幅
+    };
   };
 
   const saveToGitHub = async (newStockCode, isDelete = false) => {
@@ -247,6 +244,19 @@ ${allStocksData}`;
       navigator.clipboard.writeText(promptText).then(() => showNotification('指令已複製'));
   };
 
+  // 格式化數字顯示 (加號與顏色)
+  const formatChange = (val) => {
+    if (val > 0) return `+${val}`;
+    return val;
+  };
+
+  // 決定文字顏色 (台股習慣：漲紅、跌綠)
+  const getChangeColor = (val) => {
+    if (val > 0) return 'text-red-500';
+    if (val < 0) return 'text-green-500';
+    return 'text-slate-500';
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8 font-sans">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -295,25 +305,42 @@ ${allStocksData}`;
                   </div>
                   <div className="flex flex-col gap-2">
                     {stocks.map((stock) => (
-                      <div key={stock.code} className={`flex items-center justify-between p-3 border rounded-lg transition-all ${stock.error ? 'bg-red-50 border-red-200' : stock.isMock ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-800 text-lg">{stock.code}</span>
-                            {stock.error ? (
-                                <span className="text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded flex items-center gap-1" title={stock.error_msg}><AlertTriangle size={8}/> 查無資料</span>
-                            ) : stock.isMock ? (
-                                <span className="text-[10px] bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded flex items-center gap-1" title="Action 執行中，每 30 秒自動檢查一次"><RefreshCw size={8} className="animate-spin"/> Syncing</span>
-                            ) : (
-                                <span className="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded"><Check size={8}/> Real</span>
-                            )}
-                          </div>
-                          <span className="text-xs text-slate-500">
-                             {stock.error ? 'Data Not Found' : (stock.history?.length > 0 ? `收盤: ${stock.history[0].close}` : '等待數據...')}
-                          </span>
+                      <div key={stock.code} className={`flex flex-col p-3 border rounded-lg transition-all ${stock.error ? 'bg-red-50 border-red-200' : stock.isMock ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+                        {/* 上半部：代碼與狀態 */}
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-800 text-xl">{stock.code}</span>
+                                {stock.error ? (
+                                    <span className="text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded flex items-center gap-1" title={stock.error_msg}><AlertTriangle size={8}/> 查無資料</span>
+                                ) : stock.isMock ? (
+                                    <span className="text-[10px] bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded flex items-center gap-1" title="Action 執行中"><RefreshCw size={8} className="animate-spin"/> Syncing</span>
+                                ) : (
+                                    <span className="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded"><Check size={8}/> Real</span>
+                                )}
+                            </div>
+                            <button onClick={() => handleRemoveStock(stock.code)} className="p-1 hover:bg-red-100 text-slate-400 hover:text-red-500 rounded"><X size={16} /></button>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <button onClick={() => handleRemoveStock(stock.code)} className="p-2 hover:bg-red-100 text-slate-400 hover:text-red-500 rounded-lg"><X size={16} /></button>
-                        </div>
+
+                        {/* 下半部：詳細數據 (收盤、漲跌、漲幅、總量) */}
+                        {!stock.error && (
+                            <div className="text-sm">
+                                <div className="text-slate-500 mb-1">
+                                    收盤: <span className="font-mono text-slate-800 text-lg font-bold">{stock.history?.[0]?.close || '-'}</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-xs font-medium font-mono">
+                                    <span className={getChangeColor(stock.change)}>
+                                        漲跌: {formatChange(stock.change || 0)}
+                                    </span>
+                                    <span className={getChangeColor(stock.pctChange)}>
+                                        漲幅: {formatChange(stock.pctChange || 0)}%
+                                    </span>
+                                    <span className="text-slate-600">
+                                        總量: {stock.history?.[0]?.volume ? (stock.history[0].volume / 1000).toFixed(0) + 'k' : '-'}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                        {stock.error && <div className="text-xs text-red-500 mt-1">無法取得資料，請檢查代碼。</div>}
                       </div>
                     ))}
                   </div>
