@@ -104,7 +104,12 @@ def fetch_all_stocks():
                 yesterday_close = hist['Close'].iloc[-2]
                 change = today_close - yesterday_close
                 pct_change = (change / yesterday_close) * 100
-            # -------------------------------
+            
+            # --- 新增邏輯：判斷幣別 ---
+            currency = "USD"
+            if ".TW" in search_ticker or ".TWO" in search_ticker:
+                currency = "TWD"
+            # ------------------------
 
             hist = calculate_technical_indicators(hist)
             last_30 = hist.tail(30).reset_index()
@@ -126,8 +131,9 @@ def fetch_all_stocks():
                 "code": clean_code, 
                 "name": code,
                 "industry": industry,
-                "change": round(change, 2),        # 新增欄位
-                "pctChange": round(pct_change, 2), # 新增欄位
+                "currency": currency,              # 新增欄位
+                "change": round(change, 2),
+                "pctChange": round(pct_change, 2),
                 "history": history_data[::-1],
                 "error": False
             })
