@@ -35,7 +35,8 @@ const App = () => {
 
     // 2. 讀取 GitHub 上的真實數據 (stocks.json)
     try {
-        const res = await fetch('./stocks.json');
+        // 修改重點：加入時間戳參數 (?t=...) 避免瀏覽器快取舊資料，強制讀取最新版
+        const res = await fetch(`./stocks.json?t=${Date.now()}`);
         if (res.ok) {
             serverData = await res.json();
             combinedData = [...serverData];
