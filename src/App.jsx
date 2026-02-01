@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Copy, TrendingUp, Cpu, Globe, Rocket, Terminal, RefreshCw, AlertCircle, Save, Settings, Check } from 'lucide-react';
+import { Plus, X, Copy, TrendingUp, Cpu, Globe, Rocket, Terminal, RefreshCw, AlertCircle, Save, Settings, Check, AlertTriangle } from 'lucide-react';
 
 const App = () => {
   const [targetDate, setTargetDate] = useState('');
@@ -9,7 +9,7 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // GitHub 設定狀態 (Token, 帳號, 倉庫名)
+  // GitHub 設定狀態
   const [ghConfig, setGhConfig] = useState({
     token: '',
     owner: '',
@@ -21,7 +21,7 @@ const App = () => {
     const today = new Date();
     setTargetDate(today.toISOString().split('T')[0]);
 
-    // 1. 先讀取瀏覽器記憶體中的 GitHub 設定
+    // 讀取 GitHub 設定
     const savedConfig = JSON.parse(localStorage.getItem('gh_config')) || {};
     setGhConfig(prev => ({ ...prev, ...savedConfig }));
 
@@ -33,19 +33,21 @@ const App = () => {
     let serverData = [];
     let combinedData = [];
 
-    // 2. 讀取 GitHub 上的真實數據 (stocks.json)
+    // 1. 讀取真實數據 (加上防快取參數)
     try {
-        // 修改重點：加入時間戳參數 (?t=...) 避免瀏覽器快取舊資料，強制讀取最新版
         const res = await fetch(`./stocks.json?t=${Date.now()}`);
         if (res.ok) {
             serverData = await res.json();
+            // 這裡直接使用 serverData，其中可能包含 { error: true } 的項目
             combinedData = [...serverData];
         }
     } catch (err) {
         console.log('讀取 stocks.json 失敗:', err);
     }
 
-    // 3. 讀取瀏覽器暫存 (Local Storage) 作為備用顯示
+    // 2. 讀取瀏覽器暫存 (Local Storage) 作為備用顯示
+    // 邏輯：只有當 Server 完全沒回傳這支股票 (代表 Action 還沒跑完) 時，才顯示本地 Mock 數據
+    // 如果 Server 回傳了 error: true，那就會顯示紅字，不會被這裡覆蓋
     const localCodes = JSON.parse(localStorage.getItem('my_saved_stocks')) || [];
     const serverCodeSet = new Set(serverData.map(s => s.code));
 
@@ -60,14 +62,15 @@ const App = () => {
     setLoading(false);
   };
 
-  // 輔助函數：產業與模擬數據
+  // 輔助函數：產業判斷
   const determineIndustry = (code) => {
-    if (['TSM', 'NVDA', 'AMD', 'INTC', '2330', '2454', '2303'].includes(code)) return '半導體業';
-    if (['FLY', 'LMT', 'RTX'].includes(code)) return '航太與國防';
+    if (['TSM', 'NVDA', 'AMD', 'INTC', '2330', '2454', '2303', '3491'].includes(code)) return '半導體業';
+    if (['FLY', 'LMT', 'RTX', 'USAR'].includes(code)) return '航太與國防';
     if (/^\d{4}$/.test(code)) return '台灣上市櫃股票';
     return '美股/國際股票';
   };
 
+  // 輔助函數：生成模擬數據
   const generateMockData = (code) => {
     const dates = [];
     const history = [];
@@ -76,8 +79,7 @@ const App = () => {
     if(['2330','TSM'].includes(code)) priceBase=1000;
     else if(['NVDA'].includes(code)) priceBase=130;
     else if(['AAPL'].includes(code)) priceBase=220;
-    else if(industry.includes('台')) priceBase=50;
-
+    
     const today = new Date();
     for(let i=0; i<30; i++){
         const d = new Date(today);
@@ -99,37 +101,32 @@ const App = () => {
   const saveToGitHub = async (newStockCode, isDelete = false) => {
     const { token, owner, repo } = ghConfig;
     
-    // 如果使用者還沒設定 Token，就只做本地儲存，不報錯
     if (!token || !owner || !repo) {
-        if (!isDelete) showNotification('已暫存於瀏覽器 (未設定 GitHub 連線，無法永久儲存)');
+        if (!isDelete) showNotification('已暫存於瀏覽器 (未設定 GitHub 連線)');
         return;
     }
 
     try {
         showNotification('正在連線 GitHub 更新檔案...', 10000);
         
-        // 1. 取得目前檔案的 SHA (GitHub 修改檔案需要提供 SHA)
         const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/stock_list.json`;
         const getRes = await fetch(fileUrl, {
             headers: { 'Authorization': `token ${token}` }
         });
         
-        if (!getRes.ok) throw new Error('無法讀取 GitHub 檔案 (請檢查設定)');
+        if (!getRes.ok) throw new Error('讀取 GitHub 檔案失敗 (請檢查設定)');
         const fileData = await getRes.json();
         
-        // 解碼 Base64 內容
         const currentContent = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
         
-        // 2. 修改內容
         let newContent = [];
         if (isDelete) {
             newContent = currentContent.filter(c => c !== newStockCode);
         } else {
-            if (currentContent.includes(newStockCode)) return; // 已存在
+            if (currentContent.includes(newStockCode)) return;
             newContent = [...currentContent, newStockCode];
         }
 
-        // 3. 寫回 GitHub
         const putRes = await fetch(fileUrl, {
             method: 'PUT',
             headers: {
@@ -144,7 +141,7 @@ const App = () => {
         });
 
         if (putRes.ok) {
-            showNotification(`成功！GitHub Action 將在幾分鐘後自動更新真實數據。`);
+            showNotification(`成功！請等待 2-3 分鐘讓 GitHub Action 更新數據。`);
         } else {
             throw new Error('寫入失敗');
         }
@@ -165,7 +162,7 @@ const App = () => {
     const newStock = generateMockData(code);
     setTargetStock(prev => [newStock, ...prev]);
     
-    // 2. 存入 LocalStorage (備份)
+    // 2. 存入 LocalStorage
     const currentSaved = JSON.parse(localStorage.getItem('my_saved_stocks')) || [];
     if (!currentSaved.includes(code)) {
         localStorage.setItem('my_saved_stocks', JSON.stringify([...currentSaved, code]));
@@ -184,7 +181,6 @@ const App = () => {
     const currentSaved = JSON.parse(localStorage.getItem('my_saved_stocks')) || [];
     localStorage.setItem('my_saved_stocks', JSON.stringify(currentSaved.filter(c => c !== code)));
 
-    // 同步刪除 GitHub
     saveToGitHub(code, true);
   };
 
@@ -207,9 +203,18 @@ const App = () => {
 
   const generateAndCopyPrompt = () => {
       if (targetStock.length === 0) return;
-      const stockListString = targetStock.map(s => s.code).join('、');
+      
+      // 過濾掉有 Error 的股票，不放入 Prompt
+      const validStocks = targetStock.filter(s => !s.error);
+      
+      if (validStocks.length === 0) {
+          showNotification('目前沒有有效的數據可生成 Prompt');
+          return;
+      }
+
+      const stockListString = validStocks.map(s => s.code).join('、');
       let allStocksData = "";
-      targetStock.forEach(stock => {
+      validStocks.forEach(stock => {
         if (stock.history && stock.history.length > 0) {
           allStocksData += `\n[${stock.code} - 歷史數據]\n`;
           allStocksData += `日期 | 收盤 | 量 | K | D | MACD\n---|---|---|---|---|---\n`;
@@ -226,14 +231,14 @@ const App = () => {
 
 Raw Data:
 ${allStocksData}`;
-      navigator.clipboard.writeText(promptText).then(() => showNotification('指令已複製'));
+      navigator.clipboard.writeText(promptText).then(() => showNotification('指令已複製 (已排除錯誤項目)'));
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8 font-sans">
       <div className="max-w-4xl mx-auto space-y-6">
         
-        {/* Header (含設定按鈕) */}
+        {/* Header */}
         <header className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative">
           <div className="flex items-center gap-3">
             <div className="bg-blue-600 p-2 rounded-lg">
@@ -260,7 +265,7 @@ ${allStocksData}`;
             </button>
           </div>
 
-          {/* 設定視窗 (彈出式) */}
+          {/* 設定視窗 */}
           {isSettingsOpen && (
               <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 p-4 z-50">
                   <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
@@ -300,10 +305,6 @@ ${allStocksData}`;
                       <button onClick={handleSaveConfig} className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded p-2 text-sm font-bold mt-2">
                           儲存連線資訊
                       </button>
-                      <div className="text-[10px] text-slate-400 mt-2 bg-slate-50 p-2 rounded">
-                          <p>• 這些資訊只會存在您的瀏覽器中。</p>
-                          <p>• Token 必須要有 <code>repo</code> 權限。</p>
-                      </div>
                   </div>
               </div>
           )}
@@ -339,17 +340,36 @@ ${allStocksData}`;
                   </div>
                   <div className="flex flex-col gap-2">
                     {stocks.map((stock) => (
-                      <div key={stock.code} className={`flex items-center justify-between p-3 border rounded-lg transition-all ${stock.isMock ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+                      <div 
+                        key={stock.code} 
+                        className={`flex items-center justify-between p-3 border rounded-lg transition-all 
+                          ${stock.error ? 'bg-red-50 border-red-200' : 
+                            stock.isMock ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}
+                      >
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-slate-800 text-lg">{stock.code}</span>
-                            {stock.isMock ? 
-                                <span className="text-[10px] bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded flex items-center gap-1" title="暫存數據，等待 GitHub 同步"><RefreshCw size={8} className="animate-spin"/> Syncing</span> : 
-                                <span className="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded" title="真實數據 (已確認)"><Check size={8}/> Real</span>
-                            }
+                            
+                            {/* 狀態標籤判斷邏輯 */}
+                            {stock.error ? (
+                                <span className="text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded flex items-center gap-1" title={stock.error_msg}>
+                                    <AlertTriangle size={8}/> 查無資料
+                                </span>
+                            ) : stock.isMock ? (
+                                <span className="text-[10px] bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded flex items-center gap-1" title="暫存數據，等待 GitHub 同步">
+                                    <RefreshCw size={8} className="animate-spin"/> Syncing
+                                </span>
+                            ) : (
+                                <span className="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded" title="真實數據 (已確認)">
+                                    <Check size={8}/> Real
+                                </span>
+                            )}
+
                           </div>
                           <span className="text-xs text-slate-500">
-                             {stock.history?.length > 0 ? `收盤: ${stock.history[0].close}` : '等待數據...'}
+                             {stock.error 
+                               ? 'Ticker Error / Data Not Found' 
+                               : (stock.history?.length > 0 ? `收盤: ${stock.history[0].close}` : '等待數據...')}
                           </span>
                         </div>
                         <div className="flex items-center gap-3">
@@ -372,7 +392,9 @@ ${allStocksData}`;
                 <button onClick={generateAndCopyPrompt} className="bg-white text-blue-600 px-6 py-3 rounded-xl font-bold flex items-center gap-2"><Copy size={20} /> 複製指令</button>
             </div>
             <div className="h-32 overflow-y-auto bg-black/20 rounded-xl p-4 font-mono text-xs text-blue-100 border border-white/10 custom-scrollbar">
-                {targetStock.length > 0 ? `預覽: 請提供 ${targetStock.map(s=>s.code).join('、')} 的完整每日快訊...` : '等待數據中...'}
+                {targetStock.length > 0 
+                  ? `預覽: 請提供 ${targetStock.filter(s => !s.error).map(s=>s.code).join('、')} 的完整每日快訊...` 
+                  : '等待數據中...'}
             </div>
         </section>
 
