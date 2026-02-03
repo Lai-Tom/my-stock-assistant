@@ -5,16 +5,16 @@
     "name": "2330.TW",
     "industry": "半導體業",
     "currency": "TWD",
-    "change": 30.0,
-    "pctChange": 1.7,
+    "change": 25.0,
+    "pctChange": 1.42,
     "history": [
       {
         "date": "2026-02-03",
-        "close": 1795.0,
-        "volume": 17625548,
-        "k": 54.8,
-        "d": 65.8,
-        "macd": -5.38
+        "close": 1790.0,
+        "volume": 18181046,
+        "k": 52.9,
+        "d": 65.2,
+        "macd": -5.7
       },
       {
         "date": "2026-02-02",
