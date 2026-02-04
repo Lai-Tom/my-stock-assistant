@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, X, Copy, TrendingUp, Cpu, Globe, Rocket, Terminal, RefreshCw, AlertCircle, Save, Settings, Check, AlertTriangle, Clock } from 'lucide-react';
+import { Plus, X, Copy, TrendingUp, Globe, Rocket, Terminal, RefreshCw, Settings, Check, AlertTriangle, Play, FileText } from 'lucide-react';
 
 const App = () => {
   const [targetDate, setTargetDate] = useState('');
@@ -9,6 +9,7 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [lastUpdatedTime, setLastUpdatedTime] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false); // 控制更新按鈕的 loading 狀態
 
   const [ghConfig, setGhConfig] = useState({
     token: '',
@@ -31,7 +32,7 @@ const App = () => {
 
   useInterval(() => {
     const hasPendingStocks = targetStock.some(s => s.isMock && !s.error);
-    if (hasPendingStocks) {
+    if (hasPendingStocks || isUpdating) {
         console.log('正在背景檢查新數據...');
         initData(true);
     }
@@ -73,6 +74,7 @@ const App = () => {
         });
         if (justUpdated.length > 0) {
             showNotification(`數據更新成功！${justUpdated.join(', ')} 已取得真實報價。`);
+            setIsUpdating(false); // 更新完成，停止按鈕轉圈
         }
     }
 
@@ -94,15 +96,13 @@ const App = () => {
     return '美股/國際股票';
   };
 
-  // 生成 Mock 數據 (模擬幣別)
   const generateMockData = (code) => {
     const dates = [];
     const history = [];
     const industry = determineIndustry(code);
     let priceBase = 100;
-    let currency = 'USD'; // 預設美金
+    let currency = 'USD';
 
-    // 簡單判斷幣別與股價
     if (['2330', '2454', '2303', '3491'].includes(code) || /^\d{4}$/.test(code)) {
         currency = 'TWD';
         if(code === '2330') priceBase = 1000;
@@ -135,12 +135,49 @@ const App = () => {
         code, 
         name: code, 
         industry, 
-        currency, // Mock 幣別
+        currency, 
         history, 
         isMock: true,
         change: parseFloat(mockChange),      
         pctChange: parseFloat(mockPctChange) 
     };
+  };
+
+  // --- 新增功能：觸發 GitHub Workflow ---
+  const triggerGitHubAction = async () => {
+    const { token, owner, repo } = ghConfig;
+    if (!token || !owner || !repo) {
+        showNotification('請先設定 GitHub 連線資訊才能使用手動更新');
+        return;
+    }
+
+    setIsUpdating(true); // 開始轉圈
+    showNotification('正在呼叫 GitHub Action 執行爬蟲...', 5000);
+
+    try {
+        const url = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/daily_update.yml/dispatches`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            },
+            body: JSON.stringify({
+                ref: 'main' // 預設觸發 main 分支，若您的分支是 master 請改為 master
+            })
+        });
+
+        if (res.ok) {
+            showNotification('成功觸發！機器人正在抓取最新數據，請稍候約 2-3 分鐘...');
+            // isUpdating 會保持 true，直到上面的 initData 輪詢偵測到新資料或重新整理
+        } else {
+            throw new Error(`GitHub API 回傳錯誤 (${res.status})`);
+        }
+    } catch (error) {
+        console.error(error);
+        showNotification(`觸發失敗: ${error.message}`);
+        setIsUpdating(false);
+    }
   };
 
   const saveToGitHub = async (newStockCode, isDelete = false) => {
@@ -151,7 +188,7 @@ const App = () => {
     }
 
     try {
-        showNotification('正在連線 GitHub 更新檔案...', 5000);
+        // showNotification('正在連線 GitHub 更新檔案...', 5000); // 減少干擾，默默更新
         const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/stock_list.json`;
         const getRes = await fetch(fileUrl, { headers: { 'Authorization': `token ${token}` } });
         
@@ -177,7 +214,7 @@ const App = () => {
             })
         });
 
-        if (putRes.ok) showNotification(`成功！系統將在 2-3 分鐘後自動刷新數據...`);
+        if (putRes.ok) showNotification(isDelete ? `已刪除 ${newStockCode}` : `已新增 ${newStockCode}，系統將自動更新...`);
         else throw new Error('寫入失敗');
     } catch (error) {
         showNotification(`GitHub 同步失敗: ${error.message}`);
@@ -225,16 +262,11 @@ const App = () => {
     return acc;
   }, {});
 
-  const generateAndCopyPrompt = () => {
-      if (targetStock.length === 0) return;
-      const validStocks = targetStock.filter(s => !s.error);
-      if (validStocks.length === 0) {
-          showNotification('沒有有效數據');
-          return;
-      }
-      const stockListString = validStocks.map(s => s.code).join('、');
+  // 共用的 Prompt 生成邏輯
+  const buildPromptText = (stocks) => {
+      const stockListString = stocks.map(s => s.code).join('、');
       let allStocksData = "";
-      validStocks.forEach(stock => {
+      stocks.forEach(stock => {
         if (stock.history && stock.history.length > 0) {
           allStocksData += `\n[${stock.code} - 歷史數據]\n`;
           allStocksData += `日期 | 收盤 | 量 | K | D | MACD\n---|---|---|---|---|---\n`;
@@ -243,7 +275,7 @@ const App = () => {
           });
         }
       });
-      const promptText = `請提供 ${stockListString} 的完整每日快訊，以 ${targetDate} 最新的資訊為主。內容需包含：
+      return `請提供 ${stockListString} 的完整每日快訊，以 ${targetDate} 最新的資訊為主。內容需包含：
 1. 根據提供的 Raw Data (最近30個交易日收盤價、交易量及 KD/MACD 技術指標) 進行走勢分析；
 2. 按 ${stockListString} 業務項目分類說明的最新消息與里程碑；
 3. 指數影響分析與分析師評級/預估；
@@ -251,7 +283,27 @@ const App = () => {
 
 Raw Data:
 ${allStocksData}`;
-      navigator.clipboard.writeText(promptText).then(() => showNotification('指令已複製'));
+  };
+
+  const generateAndCopyPrompt = () => {
+      if (targetStock.length === 0) return;
+      const validStocks = targetStock.filter(s => !s.error);
+      if (validStocks.length === 0) {
+          showNotification('沒有有效數據');
+          return;
+      }
+      const promptText = buildPromptText(validStocks);
+      navigator.clipboard.writeText(promptText).then(() => showNotification('全體股票指令已複製'));
+  };
+
+  // --- 新增功能：單一股票提示詞 ---
+  const generateSinglePrompt = (stock) => {
+      if (!stock || stock.error) {
+          showNotification('無有效數據可複製');
+          return;
+      }
+      const promptText = buildPromptText([stock]);
+      navigator.clipboard.writeText(promptText).then(() => showNotification(`已複製 ${stock.code} 的專屬指令`));
   };
 
   const formatChange = (val) => {
@@ -276,7 +328,22 @@ ${allStocksData}`;
               <p className="text-sm text-slate-500">API Status: {ghConfig.token ? 'Connected' : 'Local Only'}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 mt-4 md:mt-0">
+          <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
+             {/* 頁面更新按鈕 */}
+             {ghConfig.token && (
+                 <button 
+                    onClick={triggerGitHubAction}
+                    disabled={isUpdating}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 border transition-all
+                        ${isUpdating 
+                            ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' 
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:border-slate-400 shadow-sm'}`}
+                 >
+                    {isUpdating ? <RefreshCw size={16} className="animate-spin" /> : <Play size={16} />}
+                    {isUpdating ? '更新排程中...' : '立即更新數據'}
+                 </button>
+             )}
+             
              <div className="px-4 py-2 bg-slate-100 rounded-full text-xs font-mono text-slate-600 flex items-center gap-2">
                 <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
                 {loading ? "更新中..." : lastUpdatedTime ? `最後檢查: ${lastUpdatedTime}` : targetDate}
@@ -314,7 +381,7 @@ ${allStocksData}`;
                   <div className="flex flex-col gap-2">
                     {stocks.map((stock) => (
                       <div key={stock.code} className={`flex flex-col p-3 border rounded-lg transition-all ${stock.error ? 'bg-red-50 border-red-200' : stock.isMock ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
-                        {/* 上半部：代碼與狀態 */}
+                        {/* 上半部：代碼與狀態 + 複製按鈕 */}
                         <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                                 <span className="font-bold text-slate-800 text-xl">{stock.code}</span>
@@ -326,19 +393,31 @@ ${allStocksData}`;
                                     <span className="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded"><Check size={8}/> Real</span>
                                 )}
                             </div>
-                            <button onClick={() => handleRemoveStock(stock.code)} className="p-1 hover:bg-red-100 text-slate-400 hover:text-red-500 rounded"><X size={16} /></button>
+                            
+                            <div className="flex items-center gap-2">
+                                {/* 單獨複製提示詞按鈕 */}
+                                {!stock.error && (
+                                    <button 
+                                        onClick={() => generateSinglePrompt(stock)}
+                                        className="flex items-center gap-1 px-2 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50 text-xs font-medium text-slate-600 transition-colors"
+                                        title="複製此股票的專屬提示詞"
+                                    >
+                                        <FileText size={12} />
+                                        複製提示詞
+                                    </button>
+                                )}
+                                <button onClick={() => handleRemoveStock(stock.code)} className="p-1 hover:bg-red-100 text-slate-400 hover:text-red-500 rounded"><X size={16} /></button>
+                            </div>
                         </div>
 
-                        {/* 下半部：詳細數據 (收盤、漲跌、漲幅、總量) */}
+                        {/* 下半部：詳細數據 */}
                         {!stock.error && (
                             <div className="text-sm">
                                 <div className="text-slate-500 mb-1">
                                     收盤: 
-                                    {/* 收盤價跟隨漲跌變色 */}
                                     <span className={`font-mono text-lg font-bold ml-1 ${getChangeColor(stock.change)}`}>
                                         {stock.history?.[0]?.close || '-'}
                                     </span>
-                                    {/* 顯示幣別 */}
                                     <span className="text-xs ml-1 font-normal text-slate-400">
                                         {stock.currency || (stock.isMock ? 'USD/TWD' : '')}
                                     </span>
@@ -368,7 +447,7 @@ ${allStocksData}`;
         <section className="bg-gradient-to-r from-indigo-600 to-blue-600 p-6 rounded-2xl shadow-lg text-white">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold flex items-center gap-2"><Terminal className="text-blue-200" size={24} /> Gemini Prompt</h2>
-                <button onClick={generateAndCopyPrompt} className="bg-white text-blue-600 px-6 py-3 rounded-xl font-bold flex items-center gap-2"><Copy size={20} /> 複製指令</button>
+                <button onClick={generateAndCopyPrompt} className="bg-white text-blue-600 px-6 py-3 rounded-xl font-bold flex items-center gap-2"><Copy size={20} /> 複製全部指令</button>
             </div>
             <div className="h-32 overflow-y-auto bg-black/20 rounded-xl p-4 font-mono text-xs text-blue-100 border border-white/10 custom-scrollbar">
                 {targetStock.length > 0 ? `預覽: 請提供 ${targetStock.filter(s=>!s.error).map(s=>s.code).join('、')} 的完整每日快訊...` : '等待數據中...'}
