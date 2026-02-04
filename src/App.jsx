@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, X, Copy, TrendingUp, Globe, Rocket, Terminal, RefreshCw, Settings, Check, AlertTriangle, Play, FileText } from 'lucide-react';
+import { Plus, X, Copy, TrendingUp, Globe, Rocket, Terminal, RefreshCw, Settings, Check, AlertTriangle, Play, FileText, Clock } from 'lucide-react';
 
 const App = () => {
   const [targetDate, setTargetDate] = useState('');
@@ -9,7 +9,7 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [lastUpdatedTime, setLastUpdatedTime] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false); // 控制更新按鈕的 loading 狀態
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const [ghConfig, setGhConfig] = useState({
     token: '',
@@ -57,8 +57,10 @@ const App = () => {
         if (res.ok) {
             serverData = await res.json();
             combinedData = [...serverData];
+            
+            // 使用 24小時制顯示時間，比較短，適合手機
             const now = new Date();
-            setLastUpdatedTime(now.toLocaleTimeString());
+            setLastUpdatedTime(now.toLocaleTimeString('zh-TW', { hour12: false }));
         }
     } catch (err) {
         console.log('讀取 stocks.json 失敗:', err);
@@ -74,7 +76,7 @@ const App = () => {
         });
         if (justUpdated.length > 0) {
             showNotification(`數據更新成功！${justUpdated.join(', ')} 已取得真實報價。`);
-            setIsUpdating(false); // 更新完成，停止按鈕轉圈
+            setIsUpdating(false);
         }
     }
 
@@ -143,7 +145,6 @@ const App = () => {
     };
   };
 
-  // --- 新增功能：觸發 GitHub Workflow ---
   const triggerGitHubAction = async () => {
     const { token, owner, repo } = ghConfig;
     if (!token || !owner || !repo) {
@@ -151,7 +152,7 @@ const App = () => {
         return;
     }
 
-    setIsUpdating(true); // 開始轉圈
+    setIsUpdating(true);
     showNotification('正在呼叫 GitHub Action 執行爬蟲...', 5000);
 
     try {
@@ -163,13 +164,12 @@ const App = () => {
                 'Accept': 'application/vnd.github.v3+json'
             },
             body: JSON.stringify({
-                ref: 'main' // 預設觸發 main 分支，若您的分支是 master 請改為 master
+                ref: 'main'
             })
         });
 
         if (res.ok) {
             showNotification('成功觸發！機器人正在抓取最新數據，請稍候約 2-3 分鐘...');
-            // isUpdating 會保持 true，直到上面的 initData 輪詢偵測到新資料或重新整理
         } else {
             throw new Error(`GitHub API 回傳錯誤 (${res.status})`);
         }
@@ -188,7 +188,6 @@ const App = () => {
     }
 
     try {
-        // showNotification('正在連線 GitHub 更新檔案...', 5000); // 減少干擾，默默更新
         const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/stock_list.json`;
         const getRes = await fetch(fileUrl, { headers: { 'Authorization': `token ${token}` } });
         
@@ -262,7 +261,6 @@ const App = () => {
     return acc;
   }, {});
 
-  // 共用的 Prompt 生成邏輯
   const buildPromptText = (stocks) => {
       const stockListString = stocks.map(s => s.code).join('、');
       let allStocksData = "";
@@ -296,7 +294,6 @@ ${allStocksData}`;
       navigator.clipboard.writeText(promptText).then(() => showNotification('全體股票指令已複製'));
   };
 
-  // --- 新增功能：單一股票提示詞 ---
   const generateSinglePrompt = (stock) => {
       if (!stock || stock.error) {
           showNotification('無有效數據可複製');
@@ -320,38 +317,52 @@ ${allStocksData}`;
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8 font-sans">
       <div className="max-w-4xl mx-auto space-y-6">
-        <header className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg"><TrendingUp className="text-white w-6 h-6" /></div>
+        
+        {/* Header - 手機排版優化版 */}
+        <header className="flex flex-col md:flex-row justify-between items-center bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 relative">
+          <div className="flex items-center gap-3 w-full md:w-auto mb-4 md:mb-0">
+            <div className="bg-blue-600 p-2 rounded-lg shrink-0"><TrendingUp className="text-white w-6 h-6" /></div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-800">個股情報整合助手</h1>
-              <p className="text-sm text-slate-500">API Status: {ghConfig.token ? 'Connected' : 'Local Only'}</p>
+              <h1 className="text-xl md:text-2xl font-bold text-slate-800">個股情報整合助手</h1>
+              <p className="text-xs md:text-sm text-slate-500">API Status: {ghConfig.token ? 'Connected' : 'Local Only'}</p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
+          
+          {/* Controls - 強制同一行 */}
+          <div className="flex flex-row items-center gap-2 w-full md:w-auto justify-between md:justify-end">
              {/* 頁面更新按鈕 */}
              {ghConfig.token && (
                  <button 
                     onClick={triggerGitHubAction}
                     disabled={isUpdating}
-                    className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 border transition-all
+                    className={`flex-1 md:flex-none justify-center px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 border transition-all whitespace-nowrap
                         ${isUpdating 
                             ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' 
                             : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:border-slate-400 shadow-sm'}`}
                  >
-                    {isUpdating ? <RefreshCw size={16} className="animate-spin" /> : <Play size={16} />}
-                    {isUpdating ? '更新排程中...' : '立即更新數據'}
+                    {isUpdating ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
+                    {isUpdating ? '更新中' : '立即更新'}
                  </button>
              )}
              
-             <div className="px-4 py-2 bg-slate-100 rounded-full text-xs font-mono text-slate-600 flex items-center gap-2">
+             {/* 時間/狀態標籤 */}
+             <div className="flex-1 md:flex-none justify-center px-3 py-2 bg-slate-100 rounded-full text-[10px] md:text-xs font-mono text-slate-600 flex items-center gap-1 whitespace-nowrap">
                 <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-                {loading ? "更新中..." : lastUpdatedTime ? `最後檢查: ${lastUpdatedTime}` : targetDate}
+                {loading ? "讀取中" : lastUpdatedTime ? lastUpdatedTime : targetDate}
             </div>
-            <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className={`p-2 rounded-full transition-colors ${ghConfig.token ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'}`}><Settings size={20} /></button>
+
+            {/* 設定按鈕 */}
+            <button 
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)} 
+                className={`p-2 rounded-full transition-colors shrink-0 ${ghConfig.token ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'}`}
+            >
+                <Settings size={20} />
+            </button>
           </div>
+
+          {/* Settings Modal */}
           {isSettingsOpen && (
-              <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 p-4 z-50">
+              <div className="absolute top-full right-0 mt-2 w-full md:w-80 bg-white rounded-xl shadow-xl border border-slate-200 p-4 z-50">
                   <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2"><Settings size={16} /> GitHub 連線設定</h3>
                   <div className="space-y-3">
                       <input type="text" value={ghConfig.owner} onChange={e=>setGhConfig({...ghConfig, owner:e.target.value})} className="w-full border rounded p-2 text-sm" placeholder="Owner (e.g., Lai-Tom)" />
@@ -395,12 +406,10 @@ ${allStocksData}`;
                             </div>
                             
                             <div className="flex items-center gap-2">
-                                {/* 單獨複製提示詞按鈕 */}
                                 {!stock.error && (
                                     <button 
                                         onClick={() => generateSinglePrompt(stock)}
                                         className="flex items-center gap-1 px-2 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50 text-xs font-medium text-slate-600 transition-colors"
-                                        title="複製此股票的專屬提示詞"
                                     >
                                         <FileText size={12} />
                                         複製提示詞
