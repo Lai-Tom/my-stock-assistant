@@ -11,7 +11,7 @@
       {
         "date": "2026-02-04",
         "close": 1785.0,
-        "volume": 28668096,
+        "volume": 26952301,
         "k": 52.6,
         "d": 61.8,
         "macd": -6.38
@@ -257,21 +257,21 @@
     "name": "USAR",
     "industry": "美股/國際",
     "currency": "USD",
-    "change": -2.63,
-    "pctChange": -10.13,
+    "change": -2.44,
+    "pctChange": -9.4,
     "history": [
       {
         "date": "2026-02-04",
-        "close": 23.34,
-        "volume": 12588268,
-        "k": 37.1,
-        "d": 46.7,
-        "macd": 0.12
+        "close": 23.53,
+        "volume": 34056002,
+        "k": 37.6,
+        "d": 46.9,
+        "macd": 0.13
       },
       {
         "date": "2026-02-03",
         "close": 25.97,
-        "volume": 51704400,
+        "volume": 51895800,
         "k": 45.1,
         "d": 51.6,
         "macd": 0.26
@@ -509,21 +509,21 @@
     "name": "RKLB",
     "industry": "美股/國際",
     "currency": "USD",
-    "change": -4.65,
-    "pctChange": -5.73,
+    "change": -8.16,
+    "pctChange": -10.04,
     "history": [
       {
         "date": "2026-02-04",
-        "close": 76.61,
-        "volume": 3654584,
-        "k": 20.4,
-        "d": 25.3,
-        "macd": -2.43
+        "close": 73.11,
+        "volume": 26096336,
+        "k": 21.8,
+        "d": 25.8,
+        "macd": -2.65
       },
       {
         "date": "2026-02-03",
         "close": 81.27,
-        "volume": 18947800,
+        "volume": 19000600,
         "k": 24.0,
         "d": 27.8,
         "macd": -2.3
@@ -761,21 +761,21 @@
     "name": "LUNR",
     "industry": "美股/國際",
     "currency": "USD",
-    "change": -1.88,
-    "pctChange": -9.59,
+    "change": -3.0,
+    "pctChange": -15.3,
     "history": [
       {
         "date": "2026-02-04",
-        "close": 17.73,
-        "volume": 1690129,
-        "k": 24.3,
-        "d": 37.2,
-        "macd": -0.52
+        "close": 16.61,
+        "volume": 11713782,
+        "k": 26.2,
+        "d": 37.9,
+        "macd": -0.59
       },
       {
         "date": "2026-02-03",
         "close": 19.61,
-        "volume": 7760600,
+        "volume": 7779300,
         "k": 33.5,
         "d": 43.7,
         "macd": -0.42
@@ -1013,21 +1013,21 @@
     "name": "FLY",
     "industry": "航太與國防",
     "currency": "USD",
-    "change": -1.16,
-    "pctChange": -4.63,
+    "change": -0.65,
+    "pctChange": -2.59,
     "history": [
       {
         "date": "2026-02-04",
-        "close": 23.9,
-        "volume": 629469,
-        "k": 20.2,
-        "d": 25.2,
-        "macd": -0.93
+        "close": 24.41,
+        "volume": 3790146,
+        "k": 22.0,
+        "d": 25.8,
+        "macd": -0.9
       },
       {
         "date": "2026-02-03",
         "close": 25.06,
-        "volume": 5358400,
+        "volume": 5368100,
         "k": 22.1,
         "d": 27.7,
         "macd": -0.91
@@ -1271,7 +1271,7 @@
       {
         "date": "2026-02-04",
         "close": 143.0,
-        "volume": 1980024,
+        "volume": 1941014,
         "k": 34.0,
         "d": 34.6,
         "macd": -0.86
@@ -1523,7 +1523,7 @@
       {
         "date": "2026-02-04",
         "close": 1380.0,
-        "volume": 729524,
+        "volume": 682041,
         "k": 89.1,
         "d": 84.8,
         "macd": 25.44
@@ -1769,21 +1769,21 @@
     "name": "KTOS",
     "industry": "美股/國際",
     "currency": "USD",
-    "change": -9.19,
-    "pctChange": -8.89,
+    "change": -12.04,
+    "pctChange": -11.65,
     "history": [
       {
         "date": "2026-02-04",
-        "close": 94.18,
-        "volume": 684011,
-        "k": 13.9,
-        "d": 20.2,
-        "macd": -3.8
+        "close": 91.33,
+        "volume": 4613039,
+        "k": 17.5,
+        "d": 21.4,
+        "macd": -3.98
       },
       {
         "date": "2026-02-03",
         "close": 103.37,
-        "volume": 3324100,
+        "volume": 3330100,
         "k": 19.5,
         "d": 23.4,
         "macd": -3.34
