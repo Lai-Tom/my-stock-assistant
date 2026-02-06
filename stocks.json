@@ -5,16 +5,16 @@
     "name": "2330.TW",
     "industry": "半導體業",
     "currency": "TWD",
-    "change": 10.0,
-    "pctChange": 0.57,
+    "change": 15.0,
+    "pctChange": 0.85,
     "history": [
       {
         "date": "2026-02-06",
-        "close": 1775.0,
-        "volume": 26128848,
-        "k": 40.6,
-        "d": 50.4,
-        "macd": -9.62
+        "close": 1780.0,
+        "volume": 35368589,
+        "k": 42.3,
+        "d": 51.0,
+        "macd": -9.3
       },
       {
         "date": "2026-02-05",
@@ -1265,16 +1265,16 @@
     "name": "5222",
     "industry": "台灣上市櫃股票",
     "currency": "TWD",
-    "change": -4.5,
-    "pctChange": -3.31,
+    "change": -5.0,
+    "pctChange": -3.68,
     "history": [
       {
         "date": "2026-02-06",
-        "close": 131.5,
-        "volume": 708127,
-        "k": 21.8,
-        "d": 29.0,
-        "macd": -1.46
+        "close": 131.0,
+        "volume": 835981,
+        "k": 20.9,
+        "d": 28.7,
+        "macd": -1.5
       },
       {
         "date": "2026-02-05",
@@ -1517,16 +1517,16 @@
     "name": "3491",
     "industry": "半導體業",
     "currency": "TWD",
-    "change": -20.0,
-    "pctChange": -1.56,
+    "change": -25.0,
+    "pctChange": -1.95,
     "history": [
       {
         "date": "2026-02-06",
-        "close": 1260.0,
-        "volume": 716096,
-        "k": 74.0,
-        "d": 80.4,
-        "macd": 15.99
+        "close": 1255.0,
+        "volume": 854555,
+        "k": 73.6,
+        "d": 80.2,
+        "macd": 15.68
       },
       {
         "date": "2026-02-05",
