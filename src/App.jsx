@@ -136,12 +136,15 @@ const App = () => {
             close: currentPrice.toFixed(2), 
             volume: Math.floor(Math.random()*50000+5000),
             ma5: currentPrice.toFixed(2),
-            ma20: currentPrice.toFixed(2),
+            ma20: (currentPrice * 0.98).toFixed(2),
+            ma60: (currentPrice * 0.95).toFixed(2),
             k:(Math.random()*80+10).toFixed(1), 
             d:(Math.random()*80+10).toFixed(1), 
             dif:(Math.random()*4-2).toFixed(2),
             macd:(Math.random()*4-2).toFixed(2),
-            osc:(Math.random()*2-1).toFixed(2)
+            osc:(Math.random()*2-1).toFixed(2),
+            rsi6:(Math.random()*60+20).toFixed(2),
+            rsi14:(Math.random()*50+25).toFixed(2)
         });
     });
     
@@ -283,10 +286,10 @@ const App = () => {
       stocks.forEach(stock => {
         if (stock.history && stock.history.length > 0) {
           allStocksData += `\n[${stock.code} - 歷史數據]\n`;
-          allStocksData += `日期 | 開盤 | 最高 | 最低 | 收盤 | 量 | 5MA | 20MA | K | D | DIF | MACD | OSC\n---|---|---|---|---|---|---|---|---|---|---|---|---\n`;
+          allStocksData += `日期 | 開盤 | 最高 | 最低 | 收盤 | 量 | 5MA | 20MA | 60MA | K | D | DIF | MACD | OSC | RSI6 | RSI14\n---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---\n`;
           stock.history.forEach(day => {
             const v = (val) => val !== undefined && val !== null ? val : '-';
-            allStocksData += `${day.date} | ${v(day.open)} | ${v(day.high)} | ${v(day.low)} | ${v(day.close)} | ${v(day.volume)} | ${v(day.ma5)} | ${v(day.ma20)} | ${v(day.k)} | ${v(day.d)} | ${v(day.dif)} | ${v(day.macd)} | ${v(day.osc)}\n`;
+            allStocksData += `${day.date} | ${v(day.open)} | ${v(day.high)} | ${v(day.low)} | ${v(day.close)} | ${v(day.volume)} | ${v(day.ma5)} | ${v(day.ma20)} | ${v(day.ma60)} | ${v(day.k)} | ${v(day.d)} | ${v(day.dif)} | ${v(day.macd)} | ${v(day.osc)} | ${v(day.rsi6)} | ${v(day.rsi14)}\n`;
           });
         }
       });
