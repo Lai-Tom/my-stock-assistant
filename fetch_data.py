@@ -19,6 +19,10 @@ def calculate_technical_indicators(df):
     if len(df) < 35:
         return df
 
+    # 新增 5MA 與 20MA
+    df['5MA'] = df['Close'].rolling(window=5).mean()
+    df['20MA'] = df['Close'].rolling(window=20).mean()
+
     # 計算 KD
     low_min = df['Low'].rolling(window=9).min()
     high_max = df['High'].rolling(window=9).max()
@@ -41,12 +45,12 @@ def calculate_technical_indicators(df):
     df['K'] = k_values[1:]
     df['D'] = d_values[1:]
 
-    # 計算 MACD
+    # 計算 MACD 家族: DIF, MACD(訊號線), OSC(柱狀體)
     ema12 = df['Close'].ewm(span=12, adjust=False).mean()
     ema26 = df['Close'].ewm(span=26, adjust=False).mean()
     df['DIF'] = ema12 - ema26
-    df['MACD_Signal'] = df['DIF'].ewm(span=9, adjust=False).mean()
-    df['MACD_Hist'] = df['DIF'] - df['MACD_Signal']
+    df['MACD'] = df['DIF'].ewm(span=9, adjust=False).mean()
+    df['OSC'] = df['DIF'] - df['MACD']
 
     return df
 
@@ -96,7 +100,7 @@ def fetch_all_stocks():
                 })
                 continue
 
-            # --- 新增邏輯：計算漲跌與漲幅 ---
+            # --- 漲跌幅與幣別 ---
             change = 0
             pct_change = 0
             if len(hist) >= 2:
@@ -105,25 +109,34 @@ def fetch_all_stocks():
                 change = today_close - yesterday_close
                 pct_change = (change / yesterday_close) * 100
             
-            # --- 新增邏輯：判斷幣別 ---
             currency = "USD"
             if ".TW" in search_ticker or ".TWO" in search_ticker:
                 currency = "TWD"
-            # ------------------------
-
+            
             hist = calculate_technical_indicators(hist)
             last_30 = hist.tail(30).reset_index()
             
+            # 安全防呆的進位函數
+            def safe_round(val, decimals=2):
+                return round(val, decimals) if pd.notna(val) else None
+
             history_data = []
             for _, row in last_30.iterrows():
                 date_str = row['Date'].strftime('%Y-%m-%d')
                 history_data.append({
                     "date": date_str,
-                    "close": round(row['Close'], 2),
-                    "volume": int(row['Volume']),
-                    "k": round(row.get('K', 50), 1),
-                    "d": round(row.get('D', 50), 1),
-                    "macd": round(row.get('MACD_Hist', 0), 2)
+                    "open": safe_round(row['Open']),
+                    "high": safe_round(row['High']),
+                    "low": safe_round(row['Low']),
+                    "close": safe_round(row['Close']),
+                    "volume": int(row['Volume']) if pd.notna(row['Volume']) else 0,
+                    "ma5": safe_round(row.get('5MA')),
+                    "ma20": safe_round(row.get('20MA')),
+                    "k": safe_round(row.get('K', 50), 1),
+                    "d": safe_round(row.get('D', 50), 1),
+                    "dif": safe_round(row.get('DIF')),
+                    "macd": safe_round(row.get('MACD')),
+                    "osc": safe_round(row.get('OSC'))
                 })
 
             results.append({
@@ -131,7 +144,7 @@ def fetch_all_stocks():
                 "code": clean_code, 
                 "name": code,
                 "industry": industry,
-                "currency": currency,              # 新增欄位
+                "currency": currency,
                 "change": round(change, 2),
                 "pctChange": round(pct_change, 2),
                 "history": history_data[::-1],
