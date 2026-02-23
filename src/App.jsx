@@ -151,12 +151,17 @@ const App = () => {
     const mockChange = (Math.random() * 10 - 5).toFixed(2);
     const mockPctChange = (mockChange / priceBase * 100).toFixed(2);
 
+    // 模擬財報日 (隨機給一個接近今天的日期測試用)
+    const mockEarningsDate = new Date();
+    mockEarningsDate.setDate(mockEarningsDate.getDate() + Math.floor(Math.random() * 10 - 2));
+
     return { 
         id: `local-${code}-${Date.now()}`, 
         code, 
         name: code, 
         industry, 
         currency, 
+        earningsDate: mockEarningsDate.toISOString().split('T')[0], // 加入 Mock 財報日
         history, 
         isMock: true,
         change: parseFloat(mockChange),      
@@ -283,7 +288,21 @@ const App = () => {
   const buildPromptText = (stocks) => {
       const stockListString = stocks.map(s => s.code).join('、');
       let allStocksData = "";
+      let hasUpcomingEarnings = false; // 判斷是否接近財報日
+
+      const today = new Date();
+
       stocks.forEach(stock => {
+        // 檢查財報日是否小於等於兩天
+        if (stock.earningsDate) {
+            const eDate = new Date(stock.earningsDate);
+            const diffTime = Math.abs(eDate - today);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays <= 2) {
+                hasUpcomingEarnings = true;
+            }
+        }
+
         if (stock.history && stock.history.length > 0) {
           allStocksData += `\n[${stock.code} - 歷史數據]\n`;
           allStocksData += `日期 | 開盤 | 最高 | 最低 | 收盤 | 量 | 5MA | 20MA | 60MA | K | D | DIF | MACD | OSC | RSI6 | RSI14\n---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---\n`;
@@ -297,7 +316,7 @@ const App = () => {
 1. 根據提供的 Raw Data (包含最近30個交易日的價量及 KD/MACD 技術指標) 進行走勢分析；
 2. 按 ${stockListString} 業務項目分類說明的最新消息與里程碑；
 3. 指數影響分析與分析師評級/預估；
-4. ${stockListString} 所屬產業重大消息。
+4. ${stockListString} 所屬產業重大消息。${hasUpcomingEarnings ? '\n5. 財務報表預測與分析。' : ''}
 
 Raw Data:
 ${allStocksData}`;
@@ -450,6 +469,11 @@ ${allStocksData}`;
                                     <span className="text-xs ml-1 font-normal text-slate-400">
                                         {stock.currency || (stock.isMock ? 'USD/TWD' : '')}
                                     </span>
+                                    {stock.earningsDate && (
+                                        <span className="text-[10px] ml-2 bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-100">
+                                            財報日: {stock.earningsDate}
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-3 text-xs font-medium font-mono">
                                     <span className={getChangeColor(stock.change)}>
