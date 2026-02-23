@@ -123,9 +123,25 @@ const App = () => {
     let currentPrice = priceBase;
     dates.forEach(date => {
         currentPrice += currentPrice * ((Math.random()-0.5)*0.04);
+        
+        const mockOpen = (currentPrice * (1 + (Math.random() - 0.5) * 0.02)).toFixed(2);
+        const mockHigh = (Math.max(currentPrice, parseFloat(mockOpen)) * (1 + Math.random() * 0.01)).toFixed(2);
+        const mockLow = (Math.min(currentPrice, parseFloat(mockOpen)) * (1 - Math.random() * 0.01)).toFixed(2);
+
         history.push({
-            date, close: currentPrice.toFixed(2), volume: Math.floor(Math.random()*50000+5000),
-            k:(Math.random()*80+10).toFixed(1), d:(Math.random()*80+10).toFixed(1), macd:(Math.random()*4-2).toFixed(2)
+            date, 
+            open: mockOpen,
+            high: mockHigh,
+            low: mockLow,
+            close: currentPrice.toFixed(2), 
+            volume: Math.floor(Math.random()*50000+5000),
+            ma5: currentPrice.toFixed(2),
+            ma20: currentPrice.toFixed(2),
+            k:(Math.random()*80+10).toFixed(1), 
+            d:(Math.random()*80+10).toFixed(1), 
+            dif:(Math.random()*4-2).toFixed(2),
+            macd:(Math.random()*4-2).toFixed(2),
+            osc:(Math.random()*2-1).toFixed(2)
         });
     });
     
@@ -267,14 +283,15 @@ const App = () => {
       stocks.forEach(stock => {
         if (stock.history && stock.history.length > 0) {
           allStocksData += `\n[${stock.code} - 歷史數據]\n`;
-          allStocksData += `日期 | 收盤 | 量 | K | D | MACD\n---|---|---|---|---|---\n`;
+          allStocksData += `日期 | 開盤 | 最高 | 最低 | 收盤 | 量 | 5MA | 20MA | K | D | DIF | MACD | OSC\n---|---|---|---|---|---|---|---|---|---|---|---|---\n`;
           stock.history.forEach(day => {
-            allStocksData += `${day.date} | ${day.close} | ${day.volume} | ${day.k} | ${day.d} | ${day.macd}\n`;
+            const v = (val) => val !== undefined && val !== null ? val : '-';
+            allStocksData += `${day.date} | ${v(day.open)} | ${v(day.high)} | ${v(day.low)} | ${v(day.close)} | ${v(day.volume)} | ${v(day.ma5)} | ${v(day.ma20)} | ${v(day.k)} | ${v(day.d)} | ${v(day.dif)} | ${v(day.macd)} | ${v(day.osc)}\n`;
           });
         }
       });
       return `請提供 ${stockListString} 的完整每日快訊，以 ${targetDate} 最新的資訊為主。內容需包含：
-1. 根據提供的 Raw Data (最近30個交易日收盤價、交易量及 KD/MACD 技術指標) 進行走勢分析；
+1. 根據提供的 Raw Data (包含最近30個交易日的價量及 KD/MACD 技術指標) 進行走勢分析；
 2. 按 ${stockListString} 業務項目分類說明的最新消息與里程碑；
 3. 指數影響分析與分析師評級/預估；
 4. ${stockListString} 所屬產業重大消息。
