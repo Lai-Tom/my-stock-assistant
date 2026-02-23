@@ -131,6 +131,21 @@ def fetch_all_stocks():
             currency = "USD"
             if ".TW" in search_ticker or ".TWO" in search_ticker:
                 currency = "TWD"
+                
+            # --- 新增：嘗試取得下一次財報日期 ---
+            earnings_date_str = None
+            try:
+                calendar = stock.calendar
+                if calendar is not None and not calendar.empty:
+                    # 依據 yfinance 版本不同，財報日可能以不同格式存在
+                    if 'Earnings Date' in calendar:
+                        dates = calendar['Earnings Date']
+                        if len(dates) > 0:
+                            # 轉換為字串格式 YYYY-MM-DD
+                            earnings_date_str = dates[0].strftime('%Y-%m-%d')
+            except Exception as e:
+                print(f"  -> 無法取得 {search_ticker} 財報日: {e}")
+            # -----------------------------------
             
             hist = calculate_technical_indicators(hist)
             last_30 = hist.tail(30).reset_index()
@@ -166,6 +181,7 @@ def fetch_all_stocks():
                 "name": code,
                 "industry": industry,
                 "currency": currency,
+                "earningsDate": earnings_date_str, # 寫入財報日
                 "change": round(change, 2),
                 "pctChange": round(pct_change, 2),
                 "history": history_data[::-1],
