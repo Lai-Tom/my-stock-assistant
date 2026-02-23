@@ -104,9 +104,13 @@ const App = () => {
     const industry = determineIndustry(code);
     let priceBase = 100;
     let currency = 'USD';
+    let mockForeignNet = null;
+    let mockTrustNet = null;
 
     if (['2330', '2454', '2303', '3491'].includes(code) || /^\d{4}$/.test(code)) {
         currency = 'TWD';
+        mockForeignNet = Math.floor(Math.random() * 5000 - 2500);
+        mockTrustNet = Math.floor(Math.random() * 1000 - 500);
         if(code === '2330') priceBase = 1000;
         else priceBase = 100;
     } else {
@@ -162,6 +166,8 @@ const App = () => {
         industry, 
         currency, 
         earningsDate: mockEarningsDate.toISOString().split('T')[0], // 加入 Mock 財報日
+        foreignNet: mockForeignNet,
+        trustNet: mockTrustNet,
         history, 
         isMock: true,
         change: parseFloat(mockChange),      
@@ -304,7 +310,7 @@ const App = () => {
         }
 
         if (stock.history && stock.history.length > 0) {
-          allStocksData += `\n[${stock.code} - 歷史數據]\n`;
+          allStocksData += `\n[${stock.code} - 歷史數據 (外資:${stock.foreignNet || 'N/A'}, 投信:${stock.trustNet || 'N/A'})]\n`;
           allStocksData += `日期 | 開盤 | 最高 | 最低 | 收盤 | 量 | 5MA | 20MA | 60MA | K | D | DIF | MACD | OSC | RSI6 | RSI14\n---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---\n`;
           stock.history.forEach(day => {
             const v = (val) => val !== undefined && val !== null ? val : '-';
@@ -315,7 +321,7 @@ const App = () => {
       return `請提供 ${stockListString} 的完整每日快訊，以 ${targetDate} 最新的資訊為主。內容需包含：
 1. 根據提供的 Raw Data (包含最近30個交易日的價量及 KD/MACD 技術指標) 進行走勢分析；
 2. 按 ${stockListString} 業務項目分類說明的最新消息與里程碑；
-3. 指數影響分析與分析師評級/預估；
+3. 指數影響分析與近半年分析師評級/預估；
 4. ${stockListString} 所屬產業重大消息。${hasUpcomingEarnings ? '\n5. 財務報表預測與分析。' : ''}
 
 Raw Data:
@@ -461,18 +467,32 @@ ${allStocksData}`;
                         {/* 下半部：詳細數據 */}
                         {!stock.error && (
                             <div className="text-sm">
-                                <div className="text-slate-500 mb-1">
+                                <div className="text-slate-500 mb-1 flex items-center flex-wrap gap-1">
                                     收盤: 
                                     <span className={`font-mono text-lg font-bold ml-1 ${getChangeColor(stock.change)}`}>
                                         {stock.history?.[0]?.close || '-'}
                                     </span>
-                                    <span className="text-xs ml-1 font-normal text-slate-400">
+                                    <span className="text-xs font-normal text-slate-400 mr-2">
                                         {stock.currency || (stock.isMock ? 'USD/TWD' : '')}
                                     </span>
+                                    
+                                    {/* 財報日標籤 */}
                                     {stock.earningsDate && (
-                                        <span className="text-[10px] ml-2 bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-100">
-                                            財報日: {stock.earningsDate}
+                                        <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-100">
+                                            財報: {stock.earningsDate}
                                         </span>
+                                    )}
+                                    
+                                    {/* 法人買賣超標籤 (僅台股顯示) */}
+                                    {stock.currency === 'TWD' && (stock.foreignNet !== null || stock.trustNet !== null) && (
+                                        <>
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${stock.foreignNet > 0 ? 'bg-red-50 text-red-600 border-red-100' : stock.foreignNet < 0 ? 'bg-green-50 text-green-600 border-green-100' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                                外資: {stock.foreignNet !== null ? formatChange(stock.foreignNet) : 'N/A'}
+                                            </span>
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${stock.trustNet > 0 ? 'bg-red-50 text-red-600 border-red-100' : stock.trustNet < 0 ? 'bg-green-50 text-green-600 border-green-100' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                                投信: {stock.trustNet !== null ? formatChange(stock.trustNet) : 'N/A'}
+                                            </span>
+                                        </>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-3 text-xs font-medium font-mono">
