@@ -6,8 +6,8 @@
     "industry": "半導體業",
     "currency": "TWD",
     "earningsDate": null,
-    "foreignNet": null,
-    "trustNet": null,
+    "foreignNet": -18137,
+    "trustNet": 1398,
     "change": -20.0,
     "pctChange": -0.99,
     "history": [
@@ -2781,8 +2781,8 @@
     "industry": "台灣上市櫃股票",
     "currency": "TWD",
     "earningsDate": null,
-    "foreignNet": null,
-    "trustNet": null,
+    "foreignNet": 222,
+    "trustNet": 10,
     "change": -1.5,
     "pctChange": -1.03,
     "history": [
@@ -5556,8 +5556,8 @@
     "industry": "台灣上市櫃股票",
     "currency": "TWD",
     "earningsDate": null,
-    "foreignNet": null,
-    "trustNet": null,
+    "foreignNet": 776,
+    "trustNet": 0,
     "change": 2.0,
     "pctChange": 1.26,
     "history": [
