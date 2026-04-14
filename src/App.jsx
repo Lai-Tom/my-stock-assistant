@@ -299,18 +299,21 @@ const App = () => {
       const today = new Date();
 
       stocks.forEach(stock => {
-        // 檢查財報日是否小於等於兩天
+        // 檢查財報日是否小於等於兩天 (修正為只判斷未來的日期)
         if (stock.earningsDate) {
             const eDate = new Date(stock.earningsDate);
-            const diffTime = Math.abs(eDate - today);
+            const diffTime = eDate - today;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays <= 2) {
+            if (diffDays >= 0 && diffDays <= 2) {
                 hasUpcomingEarnings = true;
             }
         }
 
         if (stock.history && stock.history.length > 0) {
-          allStocksData += `\n[${stock.code} - 歷史數據 (外資:${stock.foreignNet || 'N/A'}, 投信:${stock.trustNet || 'N/A'})]\n`;
+          // 確保空值時能正確顯示 N/A 寫入提示詞
+          const fNet = (stock.foreignNet !== null && stock.foreignNet !== undefined) ? stock.foreignNet : 'N/A';
+          const tNet = (stock.trustNet !== null && stock.trustNet !== undefined) ? stock.trustNet : 'N/A';
+          allStocksData += `\n[${stock.code} - 歷史數據 (外資:${fNet}, 投信:${tNet})]\n`;
           allStocksData += `日期 | 開盤 | 最高 | 最低 | 收盤 | 量 | 5MA | 20MA | 60MA | K | D | DIF | MACD | OSC | RSI6 | RSI14\n---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---\n`;
           stock.history.forEach(day => {
             const v = (val) => val !== undefined && val !== null ? val : '-';
@@ -476,21 +479,19 @@ ${allStocksData}`;
                                         {stock.currency || (stock.isMock ? 'USD/TWD' : '')}
                                     </span>
                                     
-                                    {/* 財報日標籤 */}
-                                    {stock.earningsDate && (
-                                        <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-100">
-                                            財報: {stock.earningsDate}
-                                        </span>
-                                    )}
+                                    {/* 財報日標籤 (拿掉隱藏條件，永遠顯示) */}
+                                    <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-100">
+                                        財報: {stock.earningsDate || 'N/A'}
+                                    </span>
                                     
-                                    {/* 法人買賣超標籤 (僅台股顯示) */}
-                                    {stock.currency === 'TWD' && (stock.foreignNet !== null || stock.trustNet !== null) && (
+                                    {/* 法人買賣超標籤 (僅台股顯示，拿掉隱藏條件，空值顯示 N/A) */}
+                                    {stock.currency === 'TWD' && (
                                         <>
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${stock.foreignNet > 0 ? 'bg-red-50 text-red-600 border-red-100' : stock.foreignNet < 0 ? 'bg-green-50 text-green-600 border-green-100' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
-                                                外資: {stock.foreignNet !== null ? formatChange(stock.foreignNet) : 'N/A'}
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${(stock.foreignNet !== null && stock.foreignNet > 0) ? 'bg-red-50 text-red-600 border-red-100' : (stock.foreignNet !== null && stock.foreignNet < 0) ? 'bg-green-50 text-green-600 border-green-100' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                                外資: {stock.foreignNet !== null && stock.foreignNet !== undefined ? formatChange(stock.foreignNet) : 'N/A'}
                                             </span>
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${stock.trustNet > 0 ? 'bg-red-50 text-red-600 border-red-100' : stock.trustNet < 0 ? 'bg-green-50 text-green-600 border-green-100' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
-                                                投信: {stock.trustNet !== null ? formatChange(stock.trustNet) : 'N/A'}
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${(stock.trustNet !== null && stock.trustNet > 0) ? 'bg-red-50 text-red-600 border-red-100' : (stock.trustNet !== null && stock.trustNet < 0) ? 'bg-green-50 text-green-600 border-green-100' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                                投信: {stock.trustNet !== null && stock.trustNet !== undefined ? formatChange(stock.trustNet) : 'N/A'}
                                             </span>
                                         </>
                                     )}
