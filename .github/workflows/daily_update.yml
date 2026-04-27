@@ -11,6 +11,11 @@ on:
 permissions:
   contents: write
 
+# --- 請在這裡加入這兩行 ---
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+# -------------------------
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
