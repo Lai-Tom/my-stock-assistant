@@ -191,47 +191,54 @@ def fetch_all_stocks():
             if ".TW" in search_ticker or ".TWO" in search_ticker:
                 currency = "TWD"
                 
-# --- 財報日期取得 (終極穩定版) ---
-            earnings_date_str = None
-            
-            # 方法一：從 stock.info 抓取 (目前 Yahoo 最穩定的欄位)
+# --- 財報日期取得 (包含下次與前次備案) ---
+            future_date = None
+            past_date = None
+            now_utc = pd.Timestamp.now(tz='UTC')
+
+            # 方法一：從 get_earnings_dates 完整列表尋找
             try:
-                info = stock.info
-                if 'earningsTimestamp' in info and info['earningsTimestamp'] is not None:
-                    # 將 Unix Timestamp 轉換為 YYYY-MM-DD
-                    earnings_date_str = pd.to_datetime(info['earningsTimestamp'], unit='s').strftime('%Y-%m-%d')
-            except Exception as e:
-                print(f"  -> info 獲取財報日異常: {e}")
+                earnings_df = stock.get_earnings_dates(limit=15)
+                if earnings_df is not None and not earnings_df.empty:
+                    f_dates = [d for d in earnings_df.index if d >= now_utc]
+                    p_dates = [d for d in earnings_df.index if d < now_utc]
+                    if f_dates:
+                        future_date = f_dates[-1].strftime('%Y-%m-%d')
+                    if p_dates:
+                        past_date = p_dates[0].strftime('%Y-%m-%d')
+            except Exception:
+                pass
 
-            # 方法二：嘗試從 calendar 屬性獲取
-            if not earnings_date_str:
+            # 方法二：從 stock.info 抓取 (補強用)
+            if not future_date or not past_date:
                 try:
-                    calendar = stock.calendar
-                    if calendar is not None:
-                        if isinstance(calendar, dict) and 'Earnings Date' in calendar:
-                            dates = calendar['Earnings Date']
-                            if len(dates) > 0:
-                                earnings_date_str = pd.to_datetime(dates[0]).strftime('%Y-%m-%d')
-                        elif isinstance(calendar, pd.DataFrame) and 'Earnings Date' in calendar.columns:
-                            dates = calendar['Earnings Date'].dropna()
-                            if len(dates) > 0:
-                                earnings_date_str = pd.to_datetime(dates.iloc[0]).strftime('%Y-%m-%d')
-                except Exception as e:
+                    info = stock.info
+                    if 'earningsTimestamp' in info and info['earningsTimestamp'] is not None:
+                        dt_obj = pd.to_datetime(info['earningsTimestamp'], unit='s', utc=True)
+                        dt_str = dt_obj.strftime('%Y-%m-%d')
+                        if dt_obj >= now_utc and not future_date:
+                            future_date = dt_str
+                        elif dt_obj < now_utc and not past_date:
+                            past_date = dt_str
+                except Exception:
                     pass
 
-            # 方法三：使用 get_earnings_dates
-            if not earnings_date_str:
-                try:
-                    earnings_df = stock.get_earnings_dates(limit=10)
-                    if earnings_df is not None and not earnings_df.empty:
-                        now_utc = pd.Timestamp.now(tz='UTC')
-                        future_dates = [d for d in earnings_df.index if d >= now_utc]
-                        if future_dates:
-                            # 陣列通常由新到舊排列，取最後一個最接近現在的未來日期
-                            earnings_date_str = future_dates[-1].strftime('%Y-%m-%d')
-                except Exception as e:
-                    pass
+            # 決定最終使用的日期與標籤狀態
+            if future_date:
+                earnings_date_str = future_date
+                is_prev_earnings = False
+            elif past_date:
+                earnings_date_str = past_date
+                is_prev_earnings = True
+            else:
+                earnings_date_str = None
+                is_prev_earnings = False
             # --------------------------------------------
+
+            # 法人買賣超資料配對
+            # (這段維持原本的)
+            foreign_net = None
+            # ...
 
             # 法人買賣超資料配對
             foreign_net = None
@@ -281,6 +288,7 @@ def fetch_all_stocks():
                 "id": clean_code, "code": clean_code, "name": code,
                 "industry": industry, "currency": currency,
                 "earningsDate": earnings_date_str,
+                "isPrevEarnings": is_prev_earnings,  # 【請記得新增這行】
                 "foreignNet": foreign_net,
                 "trustNet": trust_net,
                 "change": safe_round(change, 2),
