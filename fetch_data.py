@@ -191,17 +191,47 @@ def fetch_all_stocks():
             if ".TW" in search_ticker or ".TWO" in search_ticker:
                 currency = "TWD"
                 
-            # 財報日期取得
+# --- 財報日期取得 (終極穩定版) ---
             earnings_date_str = None
+            
+            # 方法一：從 stock.info 抓取 (目前 Yahoo 最穩定的欄位)
             try:
-                calendar = stock.calendar
-                if calendar is not None and not calendar.empty:
-                    if 'Earnings Date' in calendar:
-                        dates = calendar['Earnings Date']
-                        if len(dates) > 0:
-                            earnings_date_str = dates[0].strftime('%Y-%m-%d')
+                info = stock.info
+                if 'earningsTimestamp' in info and info['earningsTimestamp'] is not None:
+                    # 將 Unix Timestamp 轉換為 YYYY-MM-DD
+                    earnings_date_str = pd.to_datetime(info['earningsTimestamp'], unit='s').strftime('%Y-%m-%d')
             except Exception as e:
-                print(f"  -> 無法取得 {search_ticker} 財報日: {e}")
+                print(f"  -> info 獲取財報日異常: {e}")
+
+            # 方法二：嘗試從 calendar 屬性獲取
+            if not earnings_date_str:
+                try:
+                    calendar = stock.calendar
+                    if calendar is not None:
+                        if isinstance(calendar, dict) and 'Earnings Date' in calendar:
+                            dates = calendar['Earnings Date']
+                            if len(dates) > 0:
+                                earnings_date_str = pd.to_datetime(dates[0]).strftime('%Y-%m-%d')
+                        elif isinstance(calendar, pd.DataFrame) and 'Earnings Date' in calendar.columns:
+                            dates = calendar['Earnings Date'].dropna()
+                            if len(dates) > 0:
+                                earnings_date_str = pd.to_datetime(dates.iloc[0]).strftime('%Y-%m-%d')
+                except Exception as e:
+                    pass
+
+            # 方法三：使用 get_earnings_dates
+            if not earnings_date_str:
+                try:
+                    earnings_df = stock.get_earnings_dates(limit=10)
+                    if earnings_df is not None and not earnings_df.empty:
+                        now_utc = pd.Timestamp.now(tz='UTC')
+                        future_dates = [d for d in earnings_df.index if d >= now_utc]
+                        if future_dates:
+                            # 陣列通常由新到舊排列，取最後一個最接近現在的未來日期
+                            earnings_date_str = future_dates[-1].strftime('%Y-%m-%d')
+                except Exception as e:
+                    pass
+            # --------------------------------------------
 
             # 法人買賣超資料配對
             foreign_net = None
