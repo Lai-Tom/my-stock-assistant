@@ -475,17 +475,34 @@ ${allStocksData}`;
 
                         {/* 下半部：詳細數據 */}
                         {!stock.error && (
-                            <div className="text-sm">
-                                <div className="text-slate-500 mb-1 flex items-center flex-wrap gap-1">
-                                    收盤: 
-                                    <span className={`font-mono text-lg font-bold ml-1 ${getChangeColor(stock.change)}`}>
-                                        {stock.history?.[0]?.close || '-'}
-                                    </span>
-                                    <span className="text-xs font-normal text-slate-400 mr-2">
-                                        {stock.currency || (stock.isMock ? 'USD/TWD' : '')}
-                                    </span>
-                                    
-                                    {/* 財報日標籤 (區分下次、前次、無資料) */}
+                            <div className="flex flex-col gap-2 mt-1">
+                                {/* 第一行：收盤與漲跌量資訊 */}
+                                <div className="flex items-baseline flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
+                                    <div>
+                                        收盤: 
+                                        <span className={`font-mono text-lg font-bold ml-1 ${getChangeColor(stock.change)}`}>
+                                            {stock.history?.[0]?.close || '-'}
+                                        </span>
+                                        <span className="text-xs font-normal text-slate-400 ml-1">
+                                            {stock.currency || (stock.isMock ? 'USD/TWD' : '')}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs font-medium font-mono">
+                                        <span className={getChangeColor(stock.change)}>
+                                            漲跌: {formatChange(stock.change || 0)}
+                                        </span>
+                                        <span className={getChangeColor(stock.pctChange)}>
+                                            漲幅: {formatChange(stock.pctChange || 0)}%
+                                        </span>
+                                        <span className="text-slate-600">
+                                            總量: {stock.history?.[0]?.volume ? (stock.history[0].volume / 1000).toFixed(0) + 'k' : '-'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* 第二行：標籤區 (財報、外資、投信) */}
+                                <div className="flex items-center flex-wrap gap-2">
+                                    {/* 財報日標籤 */}
                                     <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
                                         !stock.earningsDate ? 'bg-slate-50 text-slate-500 border-slate-200' : 
                                         stock.isPrevEarnings ? 'bg-amber-50 text-amber-600 border-amber-100' : 
@@ -494,7 +511,7 @@ ${allStocksData}`;
                                         {!stock.earningsDate ? '財報: N/A' : (stock.isPrevEarnings ? `前次財報: ${stock.earningsDate}` : `下次財報: ${stock.earningsDate}`)}
                                     </span>
                                     
-                                    {/* 法人買賣超標籤 (僅台股顯示，拿掉隱藏條件，空值顯示 N/A) */}
+                                    {/* 法人買賣超標籤 (僅台股顯示) */}
                                     {stock.currency === 'TWD' && (
                                         <>
                                             <span className={`text-[10px] px-1.5 py-0.5 rounded border ${(stock.foreignNet !== null && stock.foreignNet > 0) ? 'bg-red-50 text-red-600 border-red-100' : (stock.foreignNet !== null && stock.foreignNet < 0) ? 'bg-green-50 text-green-600 border-green-100' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
@@ -505,17 +522,6 @@ ${allStocksData}`;
                                             </span>
                                         </>
                                     )}
-                                </div>
-                                <div className="flex items-center gap-3 text-xs font-medium font-mono">
-                                    <span className={getChangeColor(stock.change)}>
-                                        漲跌: {formatChange(stock.change || 0)}
-                                    </span>
-                                    <span className={getChangeColor(stock.pctChange)}>
-                                        漲幅: {formatChange(stock.pctChange || 0)}%
-                                    </span>
-                                    <span className="text-slate-600">
-                                        總量: {stock.history?.[0]?.volume ? (stock.history[0].volume / 1000).toFixed(0) + 'k' : '-'}
-                                    </span>
                                 </div>
                             </div>
                         )}
