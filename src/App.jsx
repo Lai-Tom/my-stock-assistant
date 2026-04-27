@@ -155,17 +155,23 @@ const App = () => {
     const mockChange = (Math.random() * 10 - 5).toFixed(2);
     const mockPctChange = (mockChange / priceBase * 100).toFixed(2);
 
-    // 模擬財報日 (隨機給一個接近今天的日期測試用)
+// 模擬財報日與前次狀態
     const mockEarningsDate = new Date();
-    mockEarningsDate.setDate(mockEarningsDate.getDate() + Math.floor(Math.random() * 10 - 2));
+    const isPrev = Math.random() > 0.5;
+    if (isPrev) {
+        mockEarningsDate.setDate(mockEarningsDate.getDate() - Math.floor(Math.random() * 30 + 1));
+    } else {
+        mockEarningsDate.setDate(mockEarningsDate.getDate() + Math.floor(Math.random() * 10));
+    }
 
-    return { 
+    return {
         id: `local-${code}-${Date.now()}`, 
         code, 
         name: code, 
         industry, 
         currency, 
-        earningsDate: mockEarningsDate.toISOString().split('T')[0], // 加入 Mock 財報日
+        earningsDate: mockEarningsDate.toISOString().split('T')[0],
+        isPrevEarnings: isPrev, // 新增這行
         foreignNet: mockForeignNet,
         trustNet: mockTrustNet,
         history, 
@@ -299,8 +305,8 @@ const App = () => {
       const today = new Date();
 
       stocks.forEach(stock => {
-        // 檢查財報日是否小於等於兩天 (修正為只判斷未來的日期)
-        if (stock.earningsDate) {
+        // 檢查財報日是否小於等於兩天 (且必須是未來的「下次財報」)
+        if (stock.earningsDate && !stock.isPrevEarnings) {
             const eDate = new Date(stock.earningsDate);
             const diffTime = eDate - today;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -479,9 +485,13 @@ ${allStocksData}`;
                                         {stock.currency || (stock.isMock ? 'USD/TWD' : '')}
                                     </span>
                                     
-                                    {/* 財報日標籤 (拿掉隱藏條件，永遠顯示) */}
-                                    <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-100">
-                                        財報: {stock.earningsDate || 'N/A'}
+                                    {/* 財報日標籤 (區分下次、前次、無資料) */}
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                                        !stock.earningsDate ? 'bg-slate-50 text-slate-500 border-slate-200' : 
+                                        stock.isPrevEarnings ? 'bg-amber-50 text-amber-600 border-amber-100' : 
+                                        'bg-purple-50 text-purple-600 border-purple-100'
+                                    }`}>
+                                        {!stock.earningsDate ? '財報: N/A' : (stock.isPrevEarnings ? `前次財報: ${stock.earningsDate}` : `下次財報: ${stock.earningsDate}`)}
                                     </span>
                                     
                                     {/* 法人買賣超標籤 (僅台股顯示，拿掉隱藏條件，空值顯示 N/A) */}
