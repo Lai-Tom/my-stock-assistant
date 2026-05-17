@@ -7,8 +7,8 @@
     "currency": "TWD",
     "earningsDate": "2026-04-16",
     "isPrevEarnings": true,
-    "foreignNet": null,
-    "trustNet": null,
+    "foreignNet": -3399,
+    "trustNet": 3385,
     "change": -5.0,
     "pctChange": -0.22,
     "history": [
@@ -2787,8 +2787,8 @@
     "currency": "TWD",
     "earningsDate": null,
     "isPrevEarnings": false,
-    "foreignNet": null,
-    "trustNet": null,
+    "foreignNet": 86,
+    "trustNet": 0,
     "change": -0.5,
     "pctChange": -0.4,
     "history": [
@@ -5567,8 +5567,8 @@
     "currency": "TWD",
     "earningsDate": null,
     "isPrevEarnings": false,
-    "foreignNet": null,
-    "trustNet": null,
+    "foreignNet": 880,
+    "trustNet": 0,
     "change": 3.0,
     "pctChange": 2.18,
     "history": [
